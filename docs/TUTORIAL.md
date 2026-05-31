@@ -1,59 +1,93 @@
-# AquaCam Raspberry Pi YouTube Stream (Community Tutorial)
+# AquaCam Raspberry Pi YouTube Stream (Beginner-Friendly Tutorial)
 
-This tutorial explains how to set up a Raspberry Pi to stream continuously to YouTube on a schedule, auto-recover from local stream stalls, and shut down safely at night.
+This guide takes you from a fresh Raspberry Pi to a reliable, always-on stream service.
 
-All sensitive values are replaced with placeholders.
+Goal:
+- Stream from camera to YouTube with ffmpeg
+- Start automatically on boot (systemd)
+- Run only in your allowed time window
+- Recover from local stalls automatically
+- Shut down safely after stream window (optional)
 
-## 1) What this project does
+All sensitive values are placeholders.
 
-- Streams camera video + silent audio to YouTube using ffmpeg
-- Runs as a systemd service (starts on boot)
-- Streams only within allowed time window
-- Stops cleanly at STOP_TIME so YouTube sees stream end
-- Optional auto-shutdown at SHUTDOWN_TIME
-- Local-only stuck-stream detection (no cloud API dependency)
-
-## 2) Folder layout (on Pi)
-
-Use this structure on the Pi:
-
-- /home/<PI_USER>/aquacam-stream/start_stream.sh
-- /home/<PI_USER>/aquacam-stream/aquacam-stream.conf
-- /home/<PI_USER>/aquacam-stream/stream.key
-- /home/<PI_USER>/aquacam-stream/stream.log
-
-## 3) Prerequisites
+## 1) Before you start
 
 Hardware:
-- Raspberry Pi (recommended Pi 4 or better)
-- USB camera at /dev/video0
-- Stable power (smart plug optional)
+- Raspberry Pi 4 (recommended) or better
+- Good power supply (important for stability)
+- USB camera (or UVC-compatible capture device)
+- microSD (or SSD) with Raspberry Pi OS
+- Network connection (Ethernet preferred for reliability)
 
-Software:
-- Raspberry Pi OS (Lite is fine)
-- ffmpeg installed
-- systemd (default on Raspberry Pi OS)
-- sudo access
+Accounts/access:
+- YouTube stream key available
+- SSH access to Pi (recommended)
+- User with sudo privileges
 
-Install packages:
+## 2) Prepare Raspberry Pi OS (fresh install)
+
+1. Flash Raspberry Pi OS (Lite is fine).
+2. In Raspberry Pi Imager, set:
+   - hostname
+   - username/password
+   - enable SSH
+   - Wi-Fi (if needed)
+   - timezone/locale
+3. Boot Pi and SSH in.
+
+Update OS:
+
+```bash
+sudo apt update
+sudo apt full-upgrade -y
+sudo reboot
+```
+
+After reboot, install packages:
 
 ```bash
 sudo apt update
 sudo apt install -y ffmpeg v4l-utils
 ```
 
-Check camera device:
+## 3) Basic Pi checks (do not skip)
+
+Time/timezone (critical for START_TIME/STOP_TIME):
+
+```bash
+timedatectl
+sudo timedatectl set-timezone <YOUR_TIMEZONE>
+timedatectl
+```
+
+Camera detection:
 
 ```bash
 v4l2-ctl --list-devices
+ls -l /dev/video*
 ```
 
-## 4) Create project directory
+If your camera is not `/dev/video0`, note the correct device path.
+
+Quick camera capability check:
+
+```bash
+v4l2-ctl -d /dev/video0 --list-formats-ext
+```
+
+## 4) Create runtime directory on Pi
 
 ```bash
 mkdir -p /home/<PI_USER>/aquacam-stream
 cd /home/<PI_USER>/aquacam-stream
 ```
+
+Expected files after setup:
+- `/home/<PI_USER>/aquacam-stream/start_stream.sh`
+- `/home/<PI_USER>/aquacam-stream/aquacam-stream.conf`
+- `/home/<PI_USER>/aquacam-stream/stream.key`
+- `/home/<PI_USER>/aquacam-stream/stream.log`
 
 ## 5) Add stream key securely
 
@@ -63,23 +97,19 @@ Create key file:
 nano /home/<PI_USER>/aquacam-stream/stream.key
 ```
 
-Paste only your YouTube stream key (single line), save, then lock permissions:
+Paste only the YouTube stream key (single line), save, then:
 
 ```bash
 chmod 600 /home/<PI_USER>/aquacam-stream/stream.key
 ```
 
-## 6) Add config and script
+Never commit this file to git.
 
-Copy these template files from this project:
+## 6) Copy project templates to Pi
 
-- configs/aquacam-stream.conf.example
-- scripts/start_stream.sh
-
-On Pi, place them as:
-
-- /home/<PI_USER>/aquacam-stream/aquacam-stream.conf
-- /home/<PI_USER>/aquacam-stream/start_stream.sh
+From this repo, copy:
+- `scripts/start_stream.sh` -> `/home/<PI_USER>/aquacam-stream/start_stream.sh`
+- `configs/aquacam-stream.conf.example` -> `/home/<PI_USER>/aquacam-stream/aquacam-stream.conf`
 
 Make script executable:
 
@@ -87,32 +117,47 @@ Make script executable:
 chmod +x /home/<PI_USER>/aquacam-stream/start_stream.sh
 ```
 
+## 7) Configure aquacam-stream.conf
+
 Edit config:
 
 ```bash
 nano /home/<PI_USER>/aquacam-stream/aquacam-stream.conf
 ```
 
-Important fields:
-- START_TIME="08:30"
-- STOP_TIME="20:30"
-- SHUTDOWN_TIME="20:35"
-- STUCK_TIMEOUT_SECONDS="480"
-- STREAM_KEY_FILE path
-- LOG_FILE path
+Minimum fields to verify:
+- `STREAM_KEY_FILE` path
+- `VIDEO_DEVICE` (example: `/dev/video0`)
+- `FRAMERATE`, `VIDEO_SIZE`, bitrate values
+- `START_TIME`, `STOP_TIME`
+- `SHUTDOWN_AFTER_STOP`, `SHUTDOWN_TIME` (if using scheduled power-off)
+- `LOG_FILE`
 
-## 7) Configure timezone (critical)
+Safe beginner defaults:
+- `VIDEO_SIZE="640x480"`
+- `FRAMERATE="30"`
+- `VIDEO_BITRATE="1200k"`
+- `STUCK_TIMEOUT_SECONDS="480"`
+
+## 8) Test ffmpeg manually once (important)
+
+Before systemd, do one direct test:
 
 ```bash
-sudo timedatectl set-timezone <YOUR_TIMEZONE>
-timedatectl
+/home/<PI_USER>/aquacam-stream/start_stream.sh
 ```
 
-Example timezone: Europe/Malta
+Watch output/logs for 1-2 minutes. Then stop with Ctrl+C.
 
-## 8) Allow passwordless shutdown for service user
+If it fails:
+- Check camera device path
+- Check stream key file exists and permissions
+- Check network connectivity
+- Check ffmpeg errors in `stream.log`
 
-Create sudoers file:
+## 9) Install sudoers rule for safe auto-shutdown (optional but recommended)
+
+If `SHUTDOWN_AFTER_STOP="true"`, install sudoers rule:
 
 ```bash
 sudo cp sudoers/aquacam-shutdown.sudoers /etc/sudoers.d/aquacam-shutdown
@@ -121,80 +166,85 @@ sudo chmod 440 /etc/sudoers.d/aquacam-shutdown
 sudo visudo -cf /etc/sudoers.d/aquacam-shutdown
 ```
 
-## 9) Install systemd service
-
-Copy service template:
+## 10) Install and enable systemd service
 
 ```bash
 sudo cp systemd/aquacam.service /etc/systemd/system/aquacam.service
 sudo sed -i "s|<PI_USER>|$(whoami)|g" /etc/systemd/system/aquacam.service
-```
-
-Enable + start:
-
-```bash
 sudo systemctl daemon-reload
 sudo systemctl enable aquacam.service
 sudo systemctl restart aquacam.service
 sudo systemctl status aquacam.service --no-pager
 ```
 
-## 10) How local stuck detection works
+## 11) Verify real behavior
 
-The script tells ffmpeg to write progress to:
-- /tmp/aquacam-ffmpeg.progress
-
-Logic:
-- If `total_size` increases, stream is healthy
-- If `total_size` does not increase for STUCK_TIMEOUT_SECONDS, ffmpeg is restarted
-
-This helps recover from local stalls without YouTube API polling.
-
-## 11) Verify behavior
-
-Follow logs:
+Live logs:
 
 ```bash
 tail -f /home/<PI_USER>/aquacam-stream/stream.log
 ```
 
+Service logs:
+
+```bash
+journalctl -u aquacam.service -f
+```
+
 Expected:
-- Inside schedule: ffmpeg launches/retries as needed
-- At STOP_TIME: "Stopping FFmpeg cleanly"
-- After stop: waits until SHUTDOWN_TIME then `shutdown -h now`
+- Inside window: ffmpeg launches
+- At STOP_TIME: clean stop message
+- After stop: optional scheduled shutdown
+- If stream stalls locally: automatic ffmpeg restart
 
-## 12) Smart plug power-cut planning
+## 12) Smart plug timing strategy (recommended)
 
-Recommended:
-- STOP_TIME = 20:30
-- SHUTDOWN_TIME = 20:35
-- Smart plug OFF = 20:45
+Example:
+- `STOP_TIME=20:30`
+- `SHUTDOWN_TIME=20:35`
+- Smart plug power cut: `20:45`
 
-This gives the Pi enough time to end stream and power down safely.
+This gives clean app stop + OS shutdown before power is cut.
 
-## 13) Operations cheat sheet
+## 13) Beginner troubleshooting
 
-Service control:
-
-```bash
-sudo systemctl start aquacam.service
-sudo systemctl stop aquacam.service
-sudo systemctl restart aquacam.service
-sudo systemctl disable aquacam.service
-sudo systemctl enable aquacam.service
-```
-
-Quick diagnostics:
+Service won’t start:
 
 ```bash
-systemctl is-active aquacam.service
-journalctl -u aquacam.service -n 100 --no-pager
-tail -n 100 /home/<PI_USER>/aquacam-stream/stream.log
+sudo systemctl status aquacam.service --no-pager
+journalctl -u aquacam.service -n 120 --no-pager
 ```
+
+No camera video:
+- Wrong `VIDEO_DEVICE`
+- Unsupported format/resolution
+- Camera not powered/recognized
+
+Permission issues:
+- Check file owner/permissions in `/home/<PI_USER>/aquacam-stream`
+- Verify `stream.key` is readable by service user
+
+Timezone/schedule mismatch:
+- Run `timedatectl`
+- Confirm START/STOP are local Pi time
+
+YouTube stuck on "Preparing stream":
+- This is a known intermittent ingest issue.
+- AquaCam tries to self-heal in two ways:
+  1) one-time warm restart shortly after startup (`WARM_RESTART_ENABLED`, `WARM_RESTART_AFTER_SECONDS`)
+  2) local stuck detection based on ffmpeg progress file (`STUCK_TIMEOUT_SECONDS`)
+- Check for these log lines in `stream.log`:
+  - `Warm restart trigger reached ... Restarting FFmpeg once ...`
+  - `Detected local stuck stream ... Restarting FFmpeg.`
+- If this keeps happening, try:
+  - increasing `WARM_RESTART_AFTER_SECONDS` (e.g., 120 -> 180)
+  - lowering camera bitrate/resolution temporarily
+  - testing wired Ethernet instead of Wi-Fi
+  - restarting the scheduled stream window cleanly (stop/start service)
 
 ## 14) Backup and restore
 
-Backup current config/script:
+Backup config/script:
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
@@ -211,19 +261,25 @@ cp /home/<PI_USER>/aquacam-stream/backups/<TIMESTAMP>/aquacam-stream.conf /home/
 sudo systemctl restart aquacam.service
 ```
 
-## 15) Security and privacy notes
+## 15) Security checklist before publish/commit
 
-Do NOT publish:
-- Real stream key
-- Home IP/domain
-- SSH private keys
-- Personal usernames/hostnames (optional; replace with placeholders)
+Never publish:
+- real stream key
+- private SSH keys
+- personal IP/domain details
 
-Safe practice:
-- Keep `stream.key` out of git
-- Use placeholders in public docs
-- Review logs before sharing screenshots
+Run scan before every commit:
 
----
+```bash
+./scripts/scan_secrets.sh
+```
 
-If you want, add your DIY hardware/build section after this tutorial (camera mount, enclosure, cooling, solar/battery, waterproofing, etc.).
+Optional local pre-commit hook:
+
+```bash
+cat > .git/hooks/pre-commit << 'EOF'
+#!/usr/bin/env bash
+./scripts/scan_secrets.sh
+EOF
+chmod +x .git/hooks/pre-commit
+```
