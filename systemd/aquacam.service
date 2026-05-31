@@ -1,0 +1,17 @@
+[Unit]
+Description=AquaCam YouTube Stream
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<PI_USER>
+WorkingDirectory=/home/<PI_USER>/aquacam-stream
+ExecStart=/home/<PI_USER>/aquacam-stream/start_stream.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/<PI_USER>/aquacam-stream/stream.log
+StandardError=append:/home/<PI_USER>/aquacam-stream/stream.log
+
+[Install]
+WantedBy=multi-user.target
