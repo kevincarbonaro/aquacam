@@ -1,6 +1,6 @@
 # AquaCam Pi Stream
 
-Community-ready Raspberry Pi project for scheduled YouTube livestreaming with automatic recovery and safe shutdown.
+Community-ready Raspberry Pi project for scheduled YouTube livestreaming with automatic recovery and safe shutdown. AquaCam??? What does this have to do with water??? The main personal project it is based on is an aquarium underwater camera. The focus is on that project and future functionalities may be specific for it. However, it can still be setup as any live stream camera.
 
 ## Features
 
