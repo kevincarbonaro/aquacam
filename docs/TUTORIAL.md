@@ -199,12 +199,18 @@ Expected:
 
 ## 12) Smart plug timing strategy (recommended)
 
-Example:
+Example daily automation:
+- Smart plug ON: `14:30` (Pi boots)
+- `START_TIME=14:30`
 - `STOP_TIME=20:30`
-- `SHUTDOWN_TIME=20:35`
-- Smart plug power cut: `20:45`
+- `SHUTDOWN_TIME=20:30`
+- Smart plug OFF power cut: `20:45`
 
-This gives clean app stop + OS shutdown before power is cut.
+Behavior:
+- If Pi boots during active window, service starts streaming automatically.
+- AquaCam does a one-time warm restart after `WARM_RESTART_AFTER_SECONDS` (recommended `60`) to clear YouTube ingest stalls.
+- At `STOP_TIME`, AquaCam stops ffmpeg cleanly first, then shuts down OS.
+- Plug cut at `20:45` is only a safety cutoff after clean shutdown.
 
 ## 13) Beginner troubleshooting
 

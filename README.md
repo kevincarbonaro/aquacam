@@ -47,8 +47,8 @@ Then run the same script again.
 ## Runtime recovery behavior
 
 - Warm restart enabled: `true`
-- Warm restart delay: `120s`
-- Behavior: ffmpeg starts, waits 120s, restarts once, then continues normal monitoring
+- Warm restart delay: `60s`
+- Behavior: ffmpeg starts, waits 60s, restarts once, then continues normal monitoring
 
 ## Known issue: YouTube stuck on "Preparing stream"
 
@@ -66,11 +66,20 @@ Config knobs (in `aquacam-stream.conf`):
 If you still see repeated "Preparing stream" stalls, please open an issue with logs and timestamps.
 Use the issue template: `.github/ISSUE_TEMPLATE/preparing-stream-stuck.md`.
 
+## Smart plug workflow (recommended)
+
+Typical daily flow:
+- Smart plug ON at `14:30` -> Pi boots
+- If boot time is inside stream window, stream starts automatically
+- One-time warm restart after `60s` to clear YouTube "Preparing stream" stalls
+- At `20:30` stream stops cleanly, then Pi shuts down
+- Smart plug OFF cut at `20:45`
+
 ## Default schedule in template
 
-- Start: `08:30`
+- Start: `14:30`
 - Stop: `20:30`
-- Shutdown: `20:35`
+- Shutdown: `20:30`
 
 ## Security note
 
