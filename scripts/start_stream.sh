@@ -21,7 +21,11 @@ WARM_RESTART_ENABLED="${WARM_RESTART_ENABLED:-true}"
 : "${STREAM_KEY_FILE:?missing STREAM_KEY_FILE}"
 : "${LOG_FILE:?missing LOG_FILE}"
 
-STREAM_KEY="$(cat "$STREAM_KEY_FILE")"
+STREAM_KEY="$(tr -d '\r\n' < "$STREAM_KEY_FILE")"
+if [[ -z "$STREAM_KEY" ]]; then
+  echo "Stream key file is empty: $STREAM_KEY_FILE" >&2
+  exit 1
+fi
 retry_count=0
 ffmpeg_pid=""
 last_total_size=0
@@ -195,8 +199,11 @@ while true; do
     sleep "${CHECK_INTERVAL:-20}"
   done
 
-  wait "$ffmpeg_pid" 2>/dev/null || true
-  exit_code=$?
+  if wait "$ffmpeg_pid" 2>/dev/null; then
+    exit_code=0
+  else
+    exit_code=$?
+  fi
   log "FFmpeg exited with code $exit_code"
 
   retry_count=$((retry_count + 1))

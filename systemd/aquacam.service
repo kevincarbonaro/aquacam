@@ -2,11 +2,17 @@
 Description=AquaCam YouTube Stream
 After=network-online.target
 Wants=network-online.target
+After=dev-video0.device
+Wants=dev-video0.device
 
 [Service]
 Type=simple
 User=<PI_USER>
 WorkingDirectory=/home/<PI_USER>/aquacam-stream
+ExecStartPre=/usr/bin/test -e /dev/video0
+ExecStartPre=/usr/bin/test -x /usr/bin/ffmpeg
+ExecStartPre=/usr/bin/test -r /home/<PI_USER>/aquacam-stream/stream.key
+ExecStartPre=/usr/bin/bash -lc '/usr/bin/tr -d "\r\n" < /home/<PI_USER>/aquacam-stream/stream.key > /tmp/aquacam-stream.key && /usr/bin/test -n "$(/usr/bin/cat /tmp/aquacam-stream.key)" && /usr/bin/rm -f /tmp/aquacam-stream.key'
 ExecStart=/home/<PI_USER>/aquacam-stream/start_stream.sh
 Restart=always
 RestartSec=5

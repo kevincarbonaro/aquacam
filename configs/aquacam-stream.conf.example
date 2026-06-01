@@ -22,14 +22,14 @@ MAX_RETRIES="0"          # 0 = infinite retries
 RETRY_DELAY="10"         # seconds
 
 # Daily schedule (empty disables check)
-START_TIME="08:30"       # do not stream before this time
+START_TIME="14:30"       # do not stream before this time
 STOP_TIME="20:30"        # stop stream at/after this time
-CHECK_INTERVAL="20"      # seconds between schedule checks
+CHECK_INTERVAL="10"      # seconds between schedule checks
 STUCK_TIMEOUT_SECONDS="480"  # local-only stuck detection threshold
 
 # Power management after stop window
 SHUTDOWN_AFTER_STOP="true"
-SHUTDOWN_TIME="20:35"
+SHUTDOWN_TIME="20:30"
 SHUTDOWN_DELAY_SECONDS="300"
 
 # Logging
@@ -37,4 +37,4 @@ LOG_FILE="/home/<PI_USER>/aquacam-stream/stream.log"
 PROGRESS_FILE="/tmp/aquacam-ffmpeg.progress"
 # One-time warm restart shortly after service boot to clear YouTube preparing stalls
 WARM_RESTART_ENABLED="true"
-WARM_RESTART_AFTER_SECONDS="120"
+WARM_RESTART_AFTER_SECONDS="60"
