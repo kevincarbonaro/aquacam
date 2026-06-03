@@ -1,0 +1,22 @@
+[Unit]
+Description=AquaCam YouTube Stream - YouTube API version
+After=network-online.target
+Wants=network-online.target
+After=dev-video0.device
+Wants=dev-video0.device
+
+[Service]
+Type=simple
+User=<PI_USER>
+WorkingDirectory=/home/<PI_USER>/aquacam-stream-ytapi
+ExecStartPre=/usr/bin/test -e /dev/video0
+ExecStartPre=/usr/bin/test -x /usr/bin/ffmpeg
+ExecStartPre=/usr/bin/test -x /usr/bin/python3
+ExecStart=/home/<PI_USER>/aquacam-stream-ytapi/start_stream.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/<PI_USER>/aquacam-stream-ytapi/stream.log
+StandardError=append:/home/<PI_USER>/aquacam-stream-ytapi/stream.log
+
+[Install]
+WantedBy=multi-user.target

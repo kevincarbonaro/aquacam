@@ -20,6 +20,22 @@ Thanks for contributing to AquaCam Pi Stream.
 - Update `docs/TUTORIAL.md` when behavior changes
 - Keep placeholder values in public templates
 
+Before commit, run:
+
+```bash
+./scripts/scan_secrets.sh
+```
+
+Optional pre-commit hook:
+
+```bash
+cat > .git/hooks/pre-commit << 'EOF'
+#!/usr/bin/env bash
+./scripts/scan_secrets.sh
+EOF
+chmod +x .git/hooks/pre-commit
+```
+
 ## Reporting issues
 
 Please include:

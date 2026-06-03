@@ -1,9 +1,9 @@
-# AquaCam stream config
-# Times use 24h format HH:MM (server local time)
+# AquaCam YouTube API stream config
+# Times use 24h format HH:MM in the Pi local timezone.
 
-# YouTube ingest
+# YouTube ingest. The API script writes STREAM_KEY_FILE before ffmpeg starts.
 STREAM_URL="rtmp://a.rtmp.youtube.com/live2"
-STREAM_KEY_FILE="/home/<PI_USER>/aquacam-stream/stream.key"
+STREAM_KEY_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.key"
 
 # Capture/encode
 VIDEO_DEVICE="/dev/video0"
@@ -18,23 +18,58 @@ AUDIO_BITRATE="128k"
 AUDIO_RATE="44100"
 
 # Retry behavior
-MAX_RETRIES="0"          # 0 = infinite retries
-RETRY_DELAY="10"         # seconds
+MAX_RETRIES="0"                 # 0 = infinite retries
+RETRY_DELAY="10"                # seconds
 
-# Daily schedule (empty disables check)
-START_TIME="14:30"       # do not stream before this time
-STOP_TIME="20:30"        # stop stream at/after this time
-CHECK_INTERVAL="10"      # seconds between schedule checks
-STUCK_TIMEOUT_SECONDS="480"  # local-only stuck detection threshold
+# Daily schedule
+START_TIME="08:30"              # do not stream before this time
+STOP_TIME="20:30"               # stop stream at/after this time
+CHECK_INTERVAL="20"             # seconds between checks
+STUCK_TIMEOUT_SECONDS="480"     # local ffmpeg progress stall threshold
 
 # Power management after stop window
 SHUTDOWN_AFTER_STOP="true"
-SHUTDOWN_TIME="20:30"
+SHUTDOWN_TIME="20:35"
 SHUTDOWN_DELAY_SECONDS="300"
 
 # Logging
-LOG_FILE="/home/<PI_USER>/aquacam-stream/stream.log"
+LOG_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.log"
 PROGRESS_FILE="/tmp/aquacam-ffmpeg.progress"
-# One-time warm restart shortly after service boot to clear YouTube preparing stalls
-WARM_RESTART_ENABLED="true"
-WARM_RESTART_AFTER_SECONDS="60"
+
+# Old workaround control.
+# Keep false for API mode; the API prepare step replaces the YouTube Studio/reboot workaround.
+WARM_RESTART_ENABLED="false"
+WARM_RESTART_AFTER_SECONDS="120"
+
+# YouTube API automation
+YT_API_ENABLED="false"          # set true after OAuth is configured
+YT_API_PREPARE_SCRIPT="/home/<PI_USER>/aquacam-stream-ytapi/ytapi_prepare_broadcast.py"
+YT_API_PREPARE_RETRIES="3"
+YT_API_PREPARE_RETRY_DELAY="20"
+
+# OAuth files on the Pi. Never commit the real files.
+YT_CLIENT_SECRETS="/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json"
+YT_TOKEN_FILE="/home/<PI_USER>/aquacam-stream-ytapi/token.json"
+
+# Saved YouTube IDs. These prevent duplicate streams/broadcasts after reboots.
+YT_BROADCAST_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/broadcast.id"
+YT_STREAM_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.id"
+YT_THUMBNAIL_FILE="/home/<PI_USER>/aquacam-stream-ytapi/the-calm-aquarium-thumbnail.png"
+YT_THUMBNAIL_SET_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/thumbnail_set.id"
+
+# Broadcast/video metadata
+YT_TIMEZONE="Europe/Malta"
+YT_PRIVACY_STATUS="public"      # public, unlisted, or private
+YT_BROADCAST_TITLE="AquaCam Live - {date}"
+YT_BROADCAST_DESCRIPTION="Live aquarium camera."
+YT_BROADCAST_TAGS="aquarium, aquatic, livestream, fish, water, pets, animals, relaxation"
+YT_DEFAULT_LANGUAGE="en"
+YT_DEFAULT_AUDIO_LANGUAGE="en"
+YT_STREAM_TITLE="AquaCam reusable stream"
+YT_CATEGORY_ID="15"             # 15 = Pets & Animals
+YT_ENABLE_AUTO_START="true"
+YT_ENABLE_AUTO_STOP="true"
+YT_ENABLE_DVR="true"
+YT_ENABLE_EMBED="true"
+YT_SELF_DECLARED_MADE_FOR_KIDS="false"
+YT_LATENCY_PREFERENCE="low"     # normal, low, or ultraLow

@@ -17,48 +17,25 @@ PROGRESS_FILE="${PROGRESS_FILE:-/tmp/aquacam-ffmpeg.progress}"
 STUCK_TIMEOUT_SECONDS="${STUCK_TIMEOUT_SECONDS:-480}"
 WARM_RESTART_AFTER_SECONDS="${WARM_RESTART_AFTER_SECONDS:-60}"
 WARM_RESTART_ENABLED="${WARM_RESTART_ENABLED:-true}"
-YT_API_ENABLED="${YT_API_ENABLED:-false}"
-YT_API_PREPARE_SCRIPT="${YT_API_PREPARE_SCRIPT:-${SCRIPT_DIR}/ytapi_prepare_broadcast.py}"
-YT_API_PREPARE_RETRIES="${YT_API_PREPARE_RETRIES:-3}"
-YT_API_PREPARE_RETRY_DELAY="${YT_API_PREPARE_RETRY_DELAY:-20}"
 
 : "${STREAM_KEY_FILE:?missing STREAM_KEY_FILE}"
 : "${LOG_FILE:?missing LOG_FILE}"
 
-log() {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
-
-prepare_youtube_api() {
-  [[ "$YT_API_ENABLED" == "true" ]] || return 0
-  local attempt
-  for attempt in $(seq 1 "$YT_API_PREPARE_RETRIES"); do
-    log "Preparing YouTube broadcast through API (attempt ${attempt}/${YT_API_PREPARE_RETRIES})"
-    if /usr/bin/env python3 "$YT_API_PREPARE_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
-      log "YouTube API prepare succeeded"
-      return 0
-    fi
-    log "YouTube API prepare failed; retrying in ${YT_API_PREPARE_RETRY_DELAY}s"
-    sleep "$YT_API_PREPARE_RETRY_DELAY"
-  done
-  log "YouTube API prepare failed after ${YT_API_PREPARE_RETRIES} attempts"
-  return 1
-}
-
-load_stream_key() {
-  STREAM_KEY="$(tr -d '\r\n' < "$STREAM_KEY_FILE")"
-  if [[ -z "$STREAM_KEY" ]]; then
-    echo "Stream key file is empty: $STREAM_KEY_FILE" >&2
-    exit 1
-  fi
-}
-
+STREAM_KEY="$(tr -d '\r\n' < "$STREAM_KEY_FILE")"
+if [[ -z "$STREAM_KEY" ]]; then
+  echo "Stream key file is empty: $STREAM_KEY_FILE" >&2
+  exit 1
+fi
 retry_count=0
 ffmpeg_pid=""
 last_total_size=0
 last_progress_ts=0
 warm_restart_done=false
 launch_ts=0
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
 
 time_to_minutes() {
   local t="$1"
@@ -191,9 +168,6 @@ while true; do
     sleep "${CHECK_INTERVAL:-20}"
     continue
   fi
-
-  prepare_youtube_api
-  load_stream_key
 
   log "Launching FFmpeg (attempt $((retry_count + 1)))"
   reset_progress_file

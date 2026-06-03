@@ -1,24 +1,22 @@
-# Secrets
-*.key
+# Secrets and live runtime state
 stream.key
-*.pem
-*.p12
-*.pfx
-.env
-.env.*
-
-# Local/runtime logs and temp
+token.json
+client_secret*.json
+broadcast.id
+stream.id
+thumbnail_set.id
 *.log
-*.progress
-*.tmp
 *.swp
 
-# Local backups/artifacts
+# Python/build/runtime clutter
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+scratch/
+
+# Local/private backups copied from a Pi may contain secrets
 backups/
 *.raw.backup
+*.bak
 *.tar.gz
-
-# OS/editor
-.DS_Store
-Thumbs.db
-.vscode/

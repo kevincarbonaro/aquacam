@@ -1,163 +1,203 @@
-# AquaCam Raspberry Pi YouTube Stream (Beginner-Friendly Tutorial)
+# AquaCam YouTube API Tutorial
 
-This guide takes you from a fresh Raspberry Pi to a reliable, always-on stream service.
+This guide sets up the recommended AquaCam version: Raspberry Pi + ffmpeg + YouTube Data API.
 
-Goal:
-- Stream from camera to YouTube with ffmpeg
-- Start automatically on boot (systemd)
-- Run only in your allowed time window
-- Recover from local stalls automatically
-- Shut down safely after stream window (optional)
+The API version is preferred over the older direct-RTMP-only version because the older setup could boot in the morning and leave YouTube stuck on "Preparing stream" until YouTube Studio was opened or the Pi was rebooted.
 
-All sensitive values are placeholders.
+## 1. What this project does
 
-## 1) Before you start
+- Starts automatically when the Pi boots
+- Streams only during a configured time window
+- Uses the YouTube Data API before ffmpeg starts
+- Reuses or creates the correct YouTube Live broadcast
+- Applies the AquaCam video template
+- Uploads the configured thumbnail
+- Writes the YouTube stream key locally for ffmpeg
+- Stops cleanly at the end of the stream window
+- Optionally shuts the Pi down after the stream window
 
-Hardware:
-- Raspberry Pi 4 (recommended) or better
-- Good power supply (important for stability)
-- USB camera (or UVC-compatible capture device)
-- microSD (or SSD) with Raspberry Pi OS
-- Network connection (Ethernet preferred for reliability)
+## 2. Folder layout on the Pi
 
-Accounts/access:
-- YouTube stream key available
-- SSH access to Pi (recommended)
-- User with sudo privileges
+Recommended folder:
 
-## 2) Prepare Raspberry Pi OS (fresh install)
+```text
+/home/<PI_USER>/aquacam-stream-ytapi/
+```
 
-1. Flash Raspberry Pi OS (Lite is fine).
-2. In Raspberry Pi Imager, set:
-   - hostname
-   - username/password
-   - enable SSH
-   - Wi-Fi (if needed)
-   - timezone/locale
-3. Boot Pi and SSH in.
+Runtime files in that folder:
 
-Update OS:
+```text
+aquacam-stream.conf
+start_stream.sh
+ytapi_prepare_broadcast.py
+requirements.txt
+the-calm-aquarium-thumbnail.png
+client_secret.json      # secret, do not commit
+token.json              # secret, do not commit
+stream.key              # generated/secret, do not commit
+broadcast.id            # runtime state, do not commit
+stream.id               # runtime state, do not commit
+thumbnail_set.id        # runtime state, do not commit
+stream.log              # runtime log, do not commit
+```
+
+## 3. Pi prerequisites
 
 ```bash
 sudo apt update
-sudo apt full-upgrade -y
-sudo reboot
+sudo apt install -y ffmpeg v4l-utils python3 python3-pip python3-venv rsync
 ```
 
-After reboot, install packages:
-
-```bash
-sudo apt update
-sudo apt install -y ffmpeg v4l-utils
-```
-
-## 3) Basic Pi checks (do not skip)
-
-Time/timezone (critical for START_TIME/STOP_TIME):
-
-```bash
-timedatectl
-sudo timedatectl set-timezone <YOUR_TIMEZONE>
-timedatectl
-```
-
-Camera detection:
+Check the camera:
 
 ```bash
 v4l2-ctl --list-devices
-ls -l /dev/video*
+ls -l /dev/video0
 ```
 
-If your camera is not `/dev/video0`, note the correct device path.
-
-Quick camera capability check:
+Set the timezone:
 
 ```bash
-v4l2-ctl -d /dev/video0 --list-formats-ext
+sudo timedatectl set-timezone Europe/Malta
+timedatectl
 ```
 
-## 4) Create runtime directory on Pi
+## 4. Copy files to the Pi
+
+From your computer, copy the project to the Pi:
 
 ```bash
-mkdir -p /home/<PI_USER>/aquacam-stream
-cd /home/<PI_USER>/aquacam-stream
+rsync -a --exclude='.git' ./ <PI_USER>@aquacam.local:/home/<PI_USER>/aquacam-stream-ytapi/
 ```
 
-Expected files after setup:
-- `/home/<PI_USER>/aquacam-stream/start_stream.sh`
-- `/home/<PI_USER>/aquacam-stream/aquacam-stream.conf`
-- `/home/<PI_USER>/aquacam-stream/stream.key`
-- `/home/<PI_USER>/aquacam-stream/stream.log`
-
-## 5) Add stream key securely
-
-Create key file:
+On the Pi:
 
 ```bash
-nano /home/<PI_USER>/aquacam-stream/stream.key
+cd /home/<PI_USER>/aquacam-stream-ytapi
+chmod +x scripts/start_stream.sh scripts/ytapi_prepare_broadcast.py
+python3 -m pip install -r requirements.txt
+cp configs/aquacam-stream.conf.example aquacam-stream.conf
+cp scripts/start_stream.sh ./start_stream.sh
+cp scripts/ytapi_prepare_broadcast.py ./ytapi_prepare_broadcast.py
+cp assets/the-calm-aquarium-thumbnail.png ./the-calm-aquarium-thumbnail.png
+chmod +x start_stream.sh ytapi_prepare_broadcast.py
 ```
 
-Paste only the YouTube stream key (single line), save, then:
+## 5. Google Cloud / YouTube setup
+
+In Google Cloud Console:
+
+1. Create or select a project.
+2. Enable `YouTube Data API v3`.
+3. Configure the OAuth consent screen.
+4. Create OAuth credentials for a `Desktop app`.
+5. Download the JSON file.
+6. Save it on the Pi as:
+
+```text
+/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json
+```
+
+Required OAuth scope:
+
+```text
+https://www.googleapis.com/auth/youtube
+```
+
+YouTube requirements:
+
+- Channel must have livestreaming enabled.
+- Account must be verified if YouTube requires it.
+- The Google account used for OAuth must have access to the YouTube channel.
+
+## 6. Configure AquaCam
+
+Edit:
 
 ```bash
-chmod 600 /home/<PI_USER>/aquacam-stream/stream.key
+nano /home/<PI_USER>/aquacam-stream-ytapi/aquacam-stream.conf
 ```
 
-Never commit this file to git.
-
-## 6) Copy project templates to Pi
-
-From this repo, copy:
-- `scripts/start_stream.sh` -> `/home/<PI_USER>/aquacam-stream/start_stream.sh`
-- `configs/aquacam-stream.conf.example` -> `/home/<PI_USER>/aquacam-stream/aquacam-stream.conf`
-
-Make script executable:
+Important values:
 
 ```bash
-chmod +x /home/<PI_USER>/aquacam-stream/start_stream.sh
+STREAM_URL="rtmp://a.rtmp.youtube.com/live2"
+STREAM_KEY_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.key"
+VIDEO_DEVICE="/dev/video0"
+START_TIME="08:30"
+STOP_TIME="20:30"
+SHUTDOWN_AFTER_STOP="true"
+SHUTDOWN_TIME="20:35"
+LOG_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.log"
+
+YT_API_ENABLED="true"
+YT_CLIENT_SECRETS="/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json"
+YT_TOKEN_FILE="/home/<PI_USER>/aquacam-stream-ytapi/token.json"
+YT_BROADCAST_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/broadcast.id"
+YT_STREAM_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.id"
+YT_THUMBNAIL_FILE="/home/<PI_USER>/aquacam-stream-ytapi/the-calm-aquarium-thumbnail.png"
+
+YT_PRIVACY_STATUS="public"
+YT_BROADCAST_TITLE="AquaCam Live - {date}"
+YT_BROADCAST_DESCRIPTION="Live aquarium camera."
+YT_BROADCAST_TAGS="aquarium, aquatic, livestream, fish, water, pets, animals, relaxation"
+YT_DEFAULT_LANGUAGE="en"
+YT_DEFAULT_AUDIO_LANGUAGE="en"
+YT_SELF_DECLARED_MADE_FOR_KIDS="false"
+YT_ENABLE_AUTO_START="true"
+YT_ENABLE_AUTO_STOP="true"
+YT_ENABLE_DVR="true"
+YT_ENABLE_EMBED="true"
+YT_LATENCY_PREFERENCE="low"
 ```
 
-## 7) Configure aquacam-stream.conf
+## 7. First-time OAuth authorization
 
-Edit config:
+If the Pi is headless, open a tunnel from your computer:
 
 ```bash
-nano /home/<PI_USER>/aquacam-stream/aquacam-stream.conf
+ssh -L 8080:localhost:8080 <PI_USER>@aquacam.local
 ```
 
-Minimum fields to verify:
-- `STREAM_KEY_FILE` path
-- `VIDEO_DEVICE` (example: `/dev/video0`)
-- `FRAMERATE`, `VIDEO_SIZE`, bitrate values
-- `START_TIME`, `STOP_TIME`
-- `SHUTDOWN_AFTER_STOP`, `SHUTDOWN_TIME` (if using scheduled power-off)
-- `LOG_FILE`
-
-Safe beginner defaults:
-- `VIDEO_SIZE="640x480"`
-- `FRAMERATE="30"`
-- `VIDEO_BITRATE="1200k"`
-- `STUCK_TIMEOUT_SECONDS="480"`
-
-## 8) Test ffmpeg manually once (important)
-
-Before systemd, do one direct test:
+In another SSH session:
 
 ```bash
-/home/<PI_USER>/aquacam-stream/start_stream.sh
+cd /home/<PI_USER>/aquacam-stream-ytapi
+python3 ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
 ```
 
-Watch output/logs for 1-2 minutes. Then stop with Ctrl+C.
+The script prints a Google authorization URL. Open it on your computer, approve the correct YouTube channel, and let Google redirect to localhost. The SSH tunnel sends that callback to the Pi.
 
-If it fails:
-- Check camera device path
-- Check stream key file exists and permissions
-- Check network connectivity
-- Check ffmpeg errors in `stream.log`
+After success, the Pi has:
 
-## 9) Install sudoers rule for safe auto-shutdown (optional but recommended)
+```text
+token.json
+stream.id
+broadcast.id
+stream.key
+```
 
-If `SHUTDOWN_AFTER_STOP="true"`, install sudoers rule:
+Lock permissions:
+
+```bash
+chmod 600 client_secret.json token.json stream.key
+```
+
+## 8. Install systemd service
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+sudo cp systemd/aquacam-ytapi.service /etc/systemd/system/aquacam-ytapi.service
+sudo sed -i "s|<PI_USER>|$(whoami)|g" /etc/systemd/system/aquacam-ytapi.service
+sudo systemctl daemon-reload
+sudo systemctl enable aquacam-ytapi.service
+sudo systemctl restart aquacam-ytapi.service
+sudo systemctl status aquacam-ytapi.service --no-pager
+```
+
+## 9. Optional shutdown permission
+
+If `SHUTDOWN_AFTER_STOP="true"`, install the sudoers rule:
 
 ```bash
 sudo cp sudoers/aquacam-shutdown.sudoers /etc/sudoers.d/aquacam-shutdown
@@ -166,126 +206,54 @@ sudo chmod 440 /etc/sudoers.d/aquacam-shutdown
 sudo visudo -cf /etc/sudoers.d/aquacam-shutdown
 ```
 
-## 10) Install and enable systemd service
+## 10. Verify
+
+Check service:
 
 ```bash
-sudo cp systemd/aquacam.service /etc/systemd/system/aquacam.service
-sudo sed -i "s|<PI_USER>|$(whoami)|g" /etc/systemd/system/aquacam.service
-sudo systemctl daemon-reload
-sudo systemctl enable aquacam.service
-sudo systemctl restart aquacam.service
-sudo systemctl status aquacam.service --no-pager
+systemctl is-active aquacam-ytapi.service
+journalctl -u aquacam-ytapi.service -n 100 --no-pager
 ```
 
-## 11) Verify real behavior
-
-Live logs:
+Check project log:
 
 ```bash
-tail -f /home/<PI_USER>/aquacam-stream/stream.log
+tail -n 100 /home/<PI_USER>/aquacam-stream-ytapi/stream.log
 ```
 
-Service logs:
+Expected log messages:
 
-```bash
-journalctl -u aquacam.service -f
+```text
+Starting AquaCam stream supervisor
+Preparing YouTube broadcast through API
+YouTube API prepare succeeded
+Launching FFmpeg
 ```
 
-Expected:
-- Inside window: ffmpeg launches
-- At STOP_TIME: clean stop message
-- After stop: optional scheduled shutdown
-- If stream stalls locally: automatic ffmpeg restart
+In YouTube Studio, the broadcast should auto-start when ffmpeg begins pushing.
 
-## 12) Smart plug timing strategy (recommended)
+## 11. Daily operation
 
-Example daily automation:
-- Smart plug ON: `14:30` (Pi boots)
-- `START_TIME=14:30`
-- `STOP_TIME=20:30`
-- `SHUTDOWN_TIME=20:30`
-- Smart plug OFF power cut: `20:45`
+Normal flow:
 
-Behavior:
-- If Pi boots during active window, service starts streaming automatically.
-- AquaCam does a one-time warm restart after `WARM_RESTART_AFTER_SECONDS` (recommended `60`) to clear YouTube ingest stalls.
-- At `STOP_TIME`, AquaCam stops ffmpeg cleanly first, then shuts down OS.
-- Plug cut at `20:45` is only a safety cutoff after clean shutdown.
+1. Smart plug powers Pi in the morning.
+2. Pi boots.
+3. systemd starts the API version.
+4. API prepares YouTube.
+5. ffmpeg streams.
+6. YouTube goes live automatically.
+7. At stop time, ffmpeg exits cleanly.
+8. Pi optionally shuts down before the smart plug cuts power.
 
-## 13) Beginner troubleshooting
+## 12. Backups
 
-Service won’t start:
-
-```bash
-sudo systemctl status aquacam.service --no-pager
-journalctl -u aquacam.service -n 120 --no-pager
-```
-
-No camera video:
-- Wrong `VIDEO_DEVICE`
-- Unsupported format/resolution
-- Camera not powered/recognized
-
-Permission issues:
-- Check file owner/permissions in `/home/<PI_USER>/aquacam-stream`
-- Verify `stream.key` is readable by service user
-
-Timezone/schedule mismatch:
-- Run `timedatectl`
-- Confirm START/STOP are local Pi time
-
-YouTube stuck on "Preparing stream":
-- This is a known intermittent ingest issue.
-- AquaCam tries to self-heal in two ways:
-  1) one-time warm restart shortly after startup (`WARM_RESTART_ENABLED`, `WARM_RESTART_AFTER_SECONDS`)
-  2) local stuck detection based on ffmpeg progress file (`STUCK_TIMEOUT_SECONDS`)
-- Check for these log lines in `stream.log`:
-  - `Warm restart trigger reached ... Restarting FFmpeg once ...`
-  - `Detected local stuck stream ... Restarting FFmpeg.`
-- If this keeps happening, try:
-  - increasing `WARM_RESTART_AFTER_SECONDS` (e.g., 120 -> 180)
-  - lowering camera bitrate/resolution temporarily
-  - testing wired Ethernet instead of Wi-Fi
-  - restarting the scheduled stream window cleanly (stop/start service)
-
-## 14) Backup and restore
-
-Backup config/script:
+Before changing a working Pi, back up the runtime folder to your computer:
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
-mkdir -p /home/<PI_USER>/aquacam-stream/backups/$TS
-cp /home/<PI_USER>/aquacam-stream/start_stream.sh /home/<PI_USER>/aquacam-stream/backups/$TS/
-cp /home/<PI_USER>/aquacam-stream/aquacam-stream.conf /home/<PI_USER>/aquacam-stream/backups/$TS/
+mkdir -p ~/Jarvis/projects/aquacam-ytapi/backups/pi-$TS
+rsync -a <PI_USER>@aquacam.local:/home/<PI_USER>/aquacam-stream-ytapi/ ~/Jarvis/projects/aquacam-ytapi/backups/pi-$TS/
+chmod -R go-rwx ~/Jarvis/projects/aquacam-ytapi/backups/pi-$TS
 ```
 
-Restore:
-
-```bash
-cp /home/<PI_USER>/aquacam-stream/backups/<TIMESTAMP>/start_stream.sh /home/<PI_USER>/aquacam-stream/start_stream.sh
-cp /home/<PI_USER>/aquacam-stream/backups/<TIMESTAMP>/aquacam-stream.conf /home/<PI_USER>/aquacam-stream/aquacam-stream.conf
-sudo systemctl restart aquacam.service
-```
-
-## 15) Security checklist before publish/commit
-
-Never publish:
-- real stream key
-- private SSH keys
-- personal IP/domain details
-
-Run scan before every commit:
-
-```bash
-./scripts/scan_secrets.sh
-```
-
-Optional local pre-commit hook:
-
-```bash
-cat > .git/hooks/pre-commit << 'EOF'
-#!/usr/bin/env bash
-./scripts/scan_secrets.sh
-EOF
-chmod +x .git/hooks/pre-commit
-```
+Do not publish those backups because they may contain secrets.

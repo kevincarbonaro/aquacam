@@ -1,0 +1,24 @@
+# Secrets
+*.key
+stream.key
+*.pem
+*.p12
+*.pfx
+.env
+.env.*
+
+# Local/runtime logs and temp
+*.log
+*.progress
+*.tmp
+*.swp
+
+# Local backups/artifacts
+backups/
+*.raw.backup
+*.tar.gz
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

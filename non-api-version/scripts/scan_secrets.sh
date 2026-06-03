@@ -17,7 +17,7 @@ fi
 echo "[scan] gitleaks not installed, using regex fallback..."
 PATTERN='(AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z\-_]{35}|ghp_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]+|-----BEGIN (RSA|EC|OPENSSH|DSA|PGP|PRIVATE) KEY-----|password\s*=|passwd\s*=|secret\s*=|token\s*=|api[_-]?key\s*=|Authorization:|Bearer\s+[A-Za-z0-9\-\._~\+\/]+=*)'
 
-mapfile -t FILES < <(git ls-files | grep -Ev '(^docs/.*\.md$|^README\.md$|^CONTRIBUTING\.md$|^SECURITY\.md$|^scripts/scan_secrets\.sh$|^non-api-version/docs/.*\.md$|^non-api-version/README\.md$|^non-api-version/CONTRIBUTING\.md$|^non-api-version/SECURITY\.md$|^non-api-version/scripts/scan_secrets\.sh$)')
+mapfile -t FILES < <(git ls-files | grep -Ev '(^docs/.*\.md$|^README\.md$|^CONTRIBUTING\.md$|^SECURITY\.md$|^scripts/scan_secrets\.sh$)')
 
 if ((${#FILES[@]} > 0)) && grep -nEI "$PATTERN" "${FILES[@]}"; then
   echo "[scan] Potential secrets found. Review before commit."
