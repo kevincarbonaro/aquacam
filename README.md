@@ -146,6 +146,12 @@ Never commit:
 
 The `.gitignore` is set up for these runtime files.
 
+For Raspberry Pi hardening guidance, see:
+
+```text
+docs/PI_HARDENING.md
+```
+
 ## Versions in this repository
 
 ### Recommended: API version
