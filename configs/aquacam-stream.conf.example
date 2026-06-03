@@ -24,13 +24,13 @@ RETRY_DELAY="10"                # seconds
 # Daily schedule
 START_TIME="08:30"              # do not stream before this time
 STOP_TIME="20:30"               # stop stream at/after this time
-CHECK_INTERVAL="20"             # seconds between checks
+CHECK_INTERVAL="60"             # seconds between health checks
 STUCK_TIMEOUT_SECONDS="480"     # local ffmpeg progress stall threshold
 
 # Power management after stop window
 SHUTDOWN_AFTER_STOP="true"
 SHUTDOWN_TIME="20:35"
-SHUTDOWN_DELAY_SECONDS="300"
+SHUTDOWN_DELAY_SECONDS="60"
 
 # Logging
 LOG_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.log"
@@ -44,6 +44,7 @@ WARM_RESTART_AFTER_SECONDS="120"
 # YouTube API automation
 YT_API_ENABLED="false"          # set true after OAuth is configured
 YT_API_PREPARE_SCRIPT="/home/<PI_USER>/aquacam-stream-ytapi/ytapi_prepare_broadcast.py"
+YT_API_END_SCRIPT="/home/<PI_USER>/aquacam-stream-ytapi/ytapi_end_broadcast.py"
 YT_API_PREPARE_RETRIES="3"
 YT_API_PREPARE_RETRY_DELAY="20"
 

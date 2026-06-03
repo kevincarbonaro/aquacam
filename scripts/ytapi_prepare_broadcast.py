@@ -106,10 +106,21 @@ def local_schedule_iso(cfg: dict[str, str]) -> str:
         tz = ZoneInfo(cfg.get("YT_TIMEZONE", "Europe/Malta"))
     except Exception:
         tz = dt.datetime.now().astimezone().tzinfo
+
+    now = dt.datetime.now(tz)
     start = cfg.get("START_TIME") or "08:30"
     hour, minute = [int(x) for x in start.split(":", 1)]
-    today = dt.datetime.now(tz).date()
+    today = now.date()
     scheduled = dt.datetime(today.year, today.month, today.day, hour, minute, tzinfo=tz)
+
+    # If the Pi boots after START_TIME, today's scheduled time is already in the past.
+    # YouTube rejects new broadcasts with invalidScheduledStartTime in that case, so
+    # create the replacement broadcast a few minutes in the future and let auto-start
+    # take it live as soon as ffmpeg begins pushing to the bound stream key.
+    minimum_start = now + dt.timedelta(minutes=5)
+    if scheduled <= minimum_start:
+        scheduled = minimum_start
+
     return scheduled.isoformat()
 
 

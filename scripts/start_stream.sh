@@ -21,6 +21,7 @@ YT_API_ENABLED="${YT_API_ENABLED:-false}"
 YT_API_PREPARE_SCRIPT="${YT_API_PREPARE_SCRIPT:-${SCRIPT_DIR}/ytapi_prepare_broadcast.py}"
 YT_API_PREPARE_RETRIES="${YT_API_PREPARE_RETRIES:-3}"
 YT_API_PREPARE_RETRY_DELAY="${YT_API_PREPARE_RETRY_DELAY:-20}"
+YT_API_END_SCRIPT="${YT_API_END_SCRIPT:-${SCRIPT_DIR}/ytapi_end_broadcast.py}"
 
 : "${STREAM_KEY_FILE:?missing STREAM_KEY_FILE}"
 : "${LOG_FILE:?missing LOG_FILE}"
@@ -43,6 +44,20 @@ prepare_youtube_api() {
   done
   log "YouTube API prepare failed after ${YT_API_PREPARE_RETRIES} attempts"
   return 1
+}
+
+end_youtube_api() {
+  [[ "$YT_API_ENABLED" == "true" ]] || return 0
+  [[ -x "$YT_API_END_SCRIPT" || -f "$YT_API_END_SCRIPT" ]] || {
+    log "YouTube API end script not found: $YT_API_END_SCRIPT"
+    return 0
+  }
+  log "Ending YouTube broadcast through API"
+  if /usr/bin/env python3 "$YT_API_END_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
+    log "YouTube API end completed"
+  else
+    log "YouTube API end failed; continuing with shutdown/retry path"
+  fi
 }
 
 load_stream_key() {
@@ -100,15 +115,15 @@ maybe_shutdown_after_stop() {
   if [[ -n "${SHUTDOWN_TIME:-}" ]]; then
     shutdown_min="$(time_to_minutes "$SHUTDOWN_TIME")"
     if (( now >= shutdown_min )); then
-      wait_s=0
+      wait_s="${SHUTDOWN_DELAY_SECONDS:-60}"
     elif (( now >= stop_min )); then
-      wait_s=$(( (shutdown_min - now) * 60 ))
+      wait_s=$(( (shutdown_min - now) * 60 + ${SHUTDOWN_DELAY_SECONDS:-60} ))
     else
       return 0
     fi
-    log "Outside stream window (${START_TIME}-${STOP_TIME}). Shutdown target ${SHUTDOWN_TIME}. Waiting ${wait_s}s."
+    log "Outside stream window (${START_TIME}-${STOP_TIME}). Shutdown target ${SHUTDOWN_TIME}; giving YouTube ${SHUTDOWN_DELAY_SECONDS:-60}s grace. Waiting ${wait_s}s."
   else
-    wait_s="${SHUTDOWN_DELAY_SECONDS:-300}"
+    wait_s="${SHUTDOWN_DELAY_SECONDS:-60}"
     log "Outside stream window (${START_TIME}-${STOP_TIME}). Scheduling shutdown in ${wait_s}s."
   fi
 
@@ -204,6 +219,7 @@ while true; do
     if ! in_stream_window; then
       log "Reached STOP_TIME window. Stopping FFmpeg cleanly."
       stop_ffmpeg
+      end_youtube_api
       maybe_shutdown_after_stop
       break
     fi
