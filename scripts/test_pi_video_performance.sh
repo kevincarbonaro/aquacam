@@ -153,6 +153,7 @@ for size in $TEST_SIZES; do
     -ar "$AUDIO_RATE" \
     -f flv \
     -progress "$progress_file" \
+    -y \
     /dev/null > "$ffmpeg_log" 2>&1 &
   ffmpeg_pid=$!
   sample_process "$ffmpeg_pid" "$samples_file" &
