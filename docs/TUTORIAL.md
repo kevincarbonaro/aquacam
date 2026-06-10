@@ -43,6 +43,22 @@ stream.log              # runtime log, do not commit
 
 ## 3. Pi prerequisites
 
+### Option A: interactive installer
+
+On a freshly imaged Raspberry Pi that is already connected to WiFi/network, run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kevincarbonaro/aquacam/main/scripts/install_aquacam.sh -o install_aquacam.sh
+bash install_aquacam.sh
+```
+
+The installer asks for the install path, stream settings, schedule, YouTube
+metadata, OAuth/client-secret handling, shutdown behavior, and systemd choices.
+It installs the project from GitHub, creates a Python virtual environment, and
+writes `aquacam-stream.conf` for you.
+
+### Option B: manual install
+
 ```bash
 sudo apt update
 sudo apt install -y ffmpeg v4l-utils python3 python3-pip python3-venv rsync

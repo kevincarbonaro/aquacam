@@ -60,6 +60,20 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 
 ## Quick install
 
+For a fresh Raspberry Pi that is already imaged, booted, online, and reachable
+over SSH, you can run the interactive installer directly on the Pi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kevincarbonaro/aquacam/main/scripts/install_aquacam.sh -o install_aquacam.sh
+bash install_aquacam.sh
+```
+
+The installer asks for camera, schedule, YouTube metadata, OAuth, and systemd
+settings. It uses a Python virtual environment and does not include secrets in
+the repository.
+
+Manual install steps are below.
+
 ```bash
 sudo apt update
 sudo apt install -y ffmpeg v4l-utils python3 python3-pip python3-venv rsync

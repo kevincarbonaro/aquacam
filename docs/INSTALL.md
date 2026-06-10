@@ -1,5 +1,20 @@
 # Install checklist
 
+## Interactive install script
+
+On a freshly imaged Raspberry Pi that is already connected to WiFi/network:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kevincarbonaro/aquacam/main/scripts/install_aquacam.sh -o install_aquacam.sh
+bash install_aquacam.sh
+```
+
+The script asks for install path, camera settings, schedule, YouTube metadata,
+OAuth/client-secret options, shutdown behavior, and whether to install/enable or
+start the systemd service.
+
+Manual install checklist follows.
+
 ## On the Pi
 
 ```bash
