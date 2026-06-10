@@ -75,7 +75,9 @@ On the Pi:
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi
 chmod +x scripts/start_stream.sh scripts/ytapi_prepare_broadcast.py
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
 cp configs/aquacam-stream.conf.example aquacam-stream.conf
 cp scripts/start_stream.sh ./start_stream.sh
 cp scripts/ytapi_prepare_broadcast.py ./ytapi_prepare_broadcast.py
@@ -131,6 +133,7 @@ SHUTDOWN_TIME="20:35"
 LOG_FILE="/home/<PI_USER>/aquacam-stream-ytapi/stream.log"
 
 YT_API_ENABLED="true"
+PYTHON_BIN="/home/<PI_USER>/aquacam-stream-ytapi/.venv/bin/python"
 YT_CLIENT_SECRETS="/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json"
 YT_TOKEN_FILE="/home/<PI_USER>/aquacam-stream-ytapi/token.json"
 YT_BROADCAST_ID_FILE="/home/<PI_USER>/aquacam-stream-ytapi/broadcast.id"
@@ -163,7 +166,7 @@ In another SSH session:
 
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi
-python3 ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
 ```
 
 The script prints a Google authorization URL. Open it on your computer, approve the correct YouTube channel, and let Google redirect to localhost. The SSH tunnel sends that callback to the Pi.
@@ -194,6 +197,11 @@ sudo systemctl enable aquacam-ytapi.service
 sudo systemctl restart aquacam-ytapi.service
 sudo systemctl status aquacam-ytapi.service --no-pager
 ```
+
+Staging note: if the camera is not plugged in yet, OAuth files are not present,
+or another Pi is currently streaming, stop after `sudo systemctl daemon-reload`.
+Only enable/restart the service when you are ready for this Pi to attempt the
+production stream.
 
 ## 9. Optional shutdown permission
 

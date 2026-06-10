@@ -21,7 +21,9 @@ On the Pi:
 
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
 cp configs/aquacam-stream.conf.example aquacam-stream.conf
 cp scripts/start_stream.sh ./start_stream.sh
 cp scripts/ytapi_prepare_broadcast.py ./ytapi_prepare_broadcast.py
@@ -53,6 +55,7 @@ Set:
 
 ```bash
 YT_API_ENABLED="true"
+PYTHON_BIN="/home/<PI_USER>/aquacam-stream-ytapi/.venv/bin/python"
 YT_CLIENT_SECRETS="/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json"
 YT_TOKEN_FILE="/home/<PI_USER>/aquacam-stream-ytapi/token.json"
 YT_THUMBNAIL_FILE="/home/<PI_USER>/aquacam-stream-ytapi/the-calm-aquarium-thumbnail.png"
@@ -70,7 +73,7 @@ On the Pi:
 
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi
-python3 ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
 chmod 600 token.json stream.key
 ```
 
@@ -84,6 +87,10 @@ sudo systemctl daemon-reload
 sudo systemctl enable aquacam-ytapi.service
 sudo systemctl restart aquacam-ytapi.service
 ```
+
+If you are staging a Pi before the camera/OAuth/cutover is ready, stop after
+`sudo systemctl daemon-reload`. Do not enable or restart the service until you
+are ready for it to attempt a live stream.
 
 ## Verify
 

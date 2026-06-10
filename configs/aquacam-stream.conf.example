@@ -43,6 +43,7 @@ WARM_RESTART_AFTER_SECONDS="120"
 
 # YouTube API automation
 YT_API_ENABLED="false"          # set true after OAuth is configured
+PYTHON_BIN="/home/<PI_USER>/aquacam-stream-ytapi/.venv/bin/python"
 YT_API_PREPARE_SCRIPT="/home/<PI_USER>/aquacam-stream-ytapi/ytapi_prepare_broadcast.py"
 YT_API_END_SCRIPT="/home/<PI_USER>/aquacam-stream-ytapi/ytapi_end_broadcast.py"
 YT_API_PREPARE_RETRIES="3"

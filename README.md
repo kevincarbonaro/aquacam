@@ -67,7 +67,9 @@ sudo apt install -y ffmpeg v4l-utils python3 python3-pip python3-venv rsync
 mkdir -p /home/<PI_USER>/aquacam-stream-ytapi
 rsync -a ./ /home/<PI_USER>/aquacam-stream-ytapi/
 cd /home/<PI_USER>/aquacam-stream-ytapi
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
 cp configs/aquacam-stream.conf.example aquacam-stream.conf
 cp scripts/start_stream.sh ./start_stream.sh
 cp scripts/ytapi_prepare_broadcast.py ./ytapi_prepare_broadcast.py
@@ -85,6 +87,7 @@ Set at least:
 
 ```bash
 YT_API_ENABLED="true"
+PYTHON_BIN="/home/<PI_USER>/aquacam-stream-ytapi/.venv/bin/python"
 YT_CLIENT_SECRETS="/home/<PI_USER>/aquacam-stream-ytapi/client_secret.json"
 YT_TOKEN_FILE="/home/<PI_USER>/aquacam-stream-ytapi/token.json"
 YT_THUMBNAIL_FILE="/home/<PI_USER>/aquacam-stream-ytapi/the-calm-aquarium-thumbnail.png"
@@ -117,7 +120,7 @@ In another SSH session:
 
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi
-python3 ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
 ```
 
 Open the printed Google authorization URL on your computer, approve the YouTube channel, and let it redirect to localhost through the tunnel. This creates `token.json`. After that, the service can run unattended.

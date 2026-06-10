@@ -18,6 +18,7 @@ STUCK_TIMEOUT_SECONDS="${STUCK_TIMEOUT_SECONDS:-480}"
 WARM_RESTART_AFTER_SECONDS="${WARM_RESTART_AFTER_SECONDS:-60}"
 WARM_RESTART_ENABLED="${WARM_RESTART_ENABLED:-true}"
 YT_API_ENABLED="${YT_API_ENABLED:-false}"
+PYTHON_BIN="${PYTHON_BIN:-/usr/bin/env python3}"
 YT_API_PREPARE_SCRIPT="${YT_API_PREPARE_SCRIPT:-${SCRIPT_DIR}/ytapi_prepare_broadcast.py}"
 YT_API_PREPARE_RETRIES="${YT_API_PREPARE_RETRIES:-3}"
 YT_API_PREPARE_RETRY_DELAY="${YT_API_PREPARE_RETRY_DELAY:-20}"
@@ -35,7 +36,7 @@ prepare_youtube_api() {
   local attempt
   for attempt in $(seq 1 "$YT_API_PREPARE_RETRIES"); do
     log "Preparing YouTube broadcast through API (attempt ${attempt}/${YT_API_PREPARE_RETRIES})"
-    if /usr/bin/env python3 "$YT_API_PREPARE_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
+    if $PYTHON_BIN "$YT_API_PREPARE_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
       log "YouTube API prepare succeeded"
       return 0
     fi
@@ -53,7 +54,7 @@ end_youtube_api() {
     return 0
   }
   log "Ending YouTube broadcast through API"
-  if /usr/bin/env python3 "$YT_API_END_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
+  if $PYTHON_BIN "$YT_API_END_SCRIPT" --config "$CONFIG_FILE" >> "$LOG_FILE" 2>&1; then
     log "YouTube API end completed"
   else
     log "YouTube API end failed; continuing with shutdown/retry path"
