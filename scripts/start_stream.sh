@@ -75,6 +75,10 @@ last_total_size=0
 last_progress_ts=0
 warm_restart_done=false
 launch_ts=0
+# Maintenance-safe shutdown guard:
+# only auto-shutdown after this service has actually reached the active stream window.
+# This prevents a manual boot outside active hours from immediately powering off the Pi.
+allow_auto_shutdown_after_active_run=false
 
 time_to_minutes() {
   local t="$1"
@@ -106,6 +110,10 @@ maybe_shutdown_after_stop() {
     return 0
   fi
   if in_stream_window; then
+    return 0
+  fi
+  if [[ "$allow_auto_shutdown_after_active_run" != "true" ]]; then
+    log "Outside stream window (${START_TIME}-${STOP_TIME}) but active window was not reached in this run. Staying on for maintenance."
     return 0
   fi
 
@@ -181,7 +189,7 @@ launch_ffmpeg() {
     -f lavfi -i anullsrc=r=${AUDIO_RATE}:cl=stereo \
     -f v4l2 -input_format "${INPUT_FORMAT}" -framerate "${FRAMERATE}" -video_size "${VIDEO_SIZE}" -i "${VIDEO_DEVICE}" \
     -shortest \
-    -c:v libx264 \
+    -c:v "${VIDEO_ENCODER:-libx264}" \
     -preset ultrafast \
     -tune zerolatency \
     -pix_fmt yuv420p \
@@ -208,6 +216,7 @@ while true; do
     continue
   fi
 
+  allow_auto_shutdown_after_active_run=true
   prepare_youtube_api
   load_stream_key
 

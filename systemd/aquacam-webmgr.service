@@ -1,0 +1,25 @@
+[Unit]
+Description=AquaCam lightweight web settings manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<PI_USER>
+Group=<PI_USER>
+WorkingDirectory=/home/<PI_USER>/aquacam-stream-ytapi
+Environment=AQUACAM_CONFIG=/home/<PI_USER>/aquacam-stream-ytapi/aquacam-stream.conf
+Environment=AQUACAM_WEB_STATE=/home/<PI_USER>/aquacam-stream-ytapi/.aquacam-webmgr.json
+Environment=AQUACAM_WEB_HOST=0.0.0.0
+Environment=AQUACAM_WEB_PORT=8080
+Environment=AQUACAM_SERVICE=aquacam-ytapi.service
+ExecStart=/usr/bin/python3 /home/<PI_USER>/aquacam-stream-ytapi/webmgr/app.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

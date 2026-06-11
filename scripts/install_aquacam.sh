@@ -77,11 +77,12 @@ main() {
   repo_url="$(ask "AquaCam GitHub tarball URL" "$REPO_TARBALL_URL_DEFAULT")"
 
   say "Collecting stream settings"
-  local video_device input_format framerate video_size video_bitrate maxrate bufsize gop audio_bitrate audio_rate
+  local video_device input_format framerate video_size video_encoder video_bitrate maxrate bufsize gop audio_bitrate audio_rate
   video_device="$(ask "Video device" "/dev/video0")"
   input_format="$(ask "Input format" "mjpeg")"
   framerate="$(ask "Framerate" "30")"
   video_size="$(ask "Video size" "640x480")"
+  video_encoder="$(ask "Video encoder" "libx264")"
   video_bitrate="$(ask "Video bitrate" "1200k")"
   maxrate="$(ask "Max bitrate" "$video_bitrate")"
   bufsize="$(ask "Buffer size" "2400k")"
@@ -178,6 +179,7 @@ main() {
   cp -f assets/the-calm-aquarium-thumbnail.png ./the-calm-aquarium-thumbnail.png
   chmod +x start_stream.sh ytapi_prepare_broadcast.py
   [[ -f ytapi_end_broadcast.py ]] && chmod +x ytapi_end_broadcast.py
+  [[ -f webmgr/start_webmgr.sh ]] && chmod +x webmgr/start_webmgr.sh
 
   say "Creating Python virtual environment"
   python3 -m venv .venv
@@ -192,6 +194,7 @@ main() {
   replace_or_append "$config" INPUT_FORMAT "$input_format"
   replace_or_append "$config" FRAMERATE "$framerate"
   replace_or_append "$config" VIDEO_SIZE "$video_size"
+  replace_or_append "$config" VIDEO_ENCODER "$video_encoder"
   replace_or_append "$config" VIDEO_BITRATE "$video_bitrate"
   replace_or_append "$config" MAXRATE "$maxrate"
   replace_or_append "$config" BUFSIZE "$bufsize"
@@ -242,6 +245,8 @@ main() {
 
   say "Verifying scripts"
   bash -n "$install_dir/start_stream.sh"
+  [[ -f "$install_dir/webmgr/start_webmgr.sh" ]] && bash -n "$install_dir/webmgr/start_webmgr.sh"
+  [[ -f "$install_dir/webmgr/app.py" ]] && python3 -m py_compile "$install_dir/webmgr/app.py"
   .venv/bin/python -m py_compile "$install_dir/ytapi_prepare_broadcast.py"
   [[ -f "$install_dir/ytapi_end_broadcast.py" ]] && .venv/bin/python -m py_compile "$install_dir/ytapi_end_broadcast.py"
 
@@ -278,6 +283,22 @@ main() {
     else
       echo "Service installed but not started. Start later with: sudo systemctl start aquacam-ytapi.service"
     fi
+  fi
+
+  if [[ -f "$install_dir/webmgr/app.py" ]] && ask_yes_no "Install lightweight web settings manager" "y"; then
+    local web_service_tmp
+    web_service_tmp="$tmpdir/aquacam-webmgr.service"
+    sed "s|<PI_USER>|$pi_user|g" "$install_dir/systemd/aquacam-webmgr.service" > "$web_service_tmp"
+    sed -i "s|/home/$pi_user/aquacam-stream-ytapi|$install_dir|g" "$web_service_tmp"
+    sudo install -m 644 "$web_service_tmp" /etc/systemd/system/aquacam-webmgr.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable aquacam-webmgr.service
+    if ask_yes_no "Start web manager now" "y"; then
+      sudo systemctl restart aquacam-webmgr.service
+      sudo systemctl status aquacam-webmgr.service --no-pager || true
+    fi
+    echo "Web manager URL: http://<this-pi-ip>:8080/"
+    echo "First visit creates the admin username/password. Do not expose this LAN-only HTTP service to the internet."
   fi
 
   say "Install complete"

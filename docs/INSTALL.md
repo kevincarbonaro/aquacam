@@ -10,8 +10,9 @@ bash install_aquacam.sh
 ```
 
 The script asks for install path, camera settings, schedule, YouTube metadata,
-OAuth/client-secret options, shutdown behavior, and whether to install/enable or
-start the systemd service.
+OAuth/client-secret options, shutdown behavior, whether to install/enable or
+start the stream systemd service, and whether to install the optional lightweight
+web settings manager.
 
 Manual install checklist follows.
 
@@ -106,6 +107,19 @@ sudo systemctl restart aquacam-ytapi.service
 If you are staging a Pi before the camera/OAuth/cutover is ready, stop after
 `sudo systemctl daemon-reload`. Do not enable or restart the service until you
 are ready for it to attempt a live stream.
+
+## Install web settings manager (optional)
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+sudo cp systemd/aquacam-webmgr.service /etc/systemd/system/aquacam-webmgr.service
+sudo sed -i "s|<PI_USER>|$(whoami)|g" /etc/systemd/system/aquacam-webmgr.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now aquacam-webmgr.service
+```
+
+Open `http://<pi-ip>:8080/` on your LAN. First access creates the admin login.
+Do not expose this HTTP service to the internet.
 
 ## Verify
 

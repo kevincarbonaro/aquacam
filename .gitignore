@@ -5,6 +5,9 @@ client_secret*.json
 broadcast.id
 stream.id
 thumbnail_set.id
+.aquacam-webmgr.json
+webmgr/webmgr.pid
+webmgr/webmgr.log
 *.log
 *.swp
 

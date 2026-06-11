@@ -17,6 +17,8 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 - Daily start/stop window
 - Clean end-of-day ffmpeg stop
 - Optional Pi shutdown after the stream window
+- Maintenance-safe outside-hours boot: manual boots outside the active window stay on instead of immediately shutting down
+- Lightweight web settings manager with first-run login setup
 - Local stuck-stream detection using ffmpeg progress output
 - YouTube Data API v3 broadcast preparation
 - Reuses saved YouTube liveStream where possible
@@ -55,6 +57,8 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 - `scripts/ytapi_prepare_broadcast.py` - YouTube API prepare step
 - `configs/aquacam-stream.conf.example` - config template
 - `systemd/aquacam-ytapi.service` - systemd unit template
+- `systemd/aquacam-webmgr.service` - optional web manager systemd unit template
+- `webmgr/` - lightweight LAN web UI for editing safe config settings
 - `sudoers/aquacam-shutdown.sudoers` - optional shutdown sudoers rule
 - `assets/the-calm-aquarium-thumbnail.png` - sample thumbnail
 
@@ -149,6 +153,28 @@ sudo systemctl enable aquacam-ytapi.service
 sudo systemctl restart aquacam-ytapi.service
 sudo systemctl status aquacam-ytapi.service --no-pager
 ```
+
+## Optional web settings manager
+
+The `webmgr/` folder provides a tiny LAN-only web UI for editing common safe
+settings in `aquacam-stream.conf`. It uses only Python's standard library.
+First visit asks you to create the admin login.
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+sudo cp systemd/aquacam-webmgr.service /etc/systemd/system/aquacam-webmgr.service
+sudo sed -i "s|<PI_USER>|$(whoami)|g" /etc/systemd/system/aquacam-webmgr.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now aquacam-webmgr.service
+```
+
+Then open:
+
+```text
+http://<pi-ip>:8080/
+```
+
+Do not expose this HTTP service to the internet.
 
 ## Security
 
