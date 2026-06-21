@@ -27,6 +27,7 @@ import sys
 from typing import Any
 
 try:
+    from google.auth.exceptions import RefreshError
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
@@ -139,15 +140,28 @@ def get_credentials(client_secrets: pathlib.Path, token_file: pathlib.Path) -> C
     if token_file.exists():
         creds = Credentials.from_authorized_user_file(str(token_file), SCOPES)
     if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+        except RefreshError as exc:
+            if "invalid_grant" in str(exc):
+                backup = token_file.with_name(token_file.name + ".revoked." + dt.datetime.now().strftime("%Y%m%d-%H%M%S"))
+                token_file.replace(backup)
+                raise RuntimeError(
+                    f"YouTube OAuth token was expired/revoked and was moved to {backup}. "
+                    "Open the AquaCam web UI and use YouTube re-authorisation. "
+                    "If this keeps happening after about 7 days, move the Google OAuth app from Testing to Production."
+                ) from exc
+            raise
     if not creds or not creds.valid:
         if not client_secrets.exists():
             raise FileNotFoundError(f"Missing OAuth client secret file: {client_secrets}")
         flow = InstalledAppFlow.from_client_secrets_file(str(client_secrets), SCOPES)
         # Google has removed the old copy/paste console OAuth flow.
         # This starts a temporary localhost callback server and prints the auth URL.
-        # On a headless Pi, SSH with: ssh -L 8080:localhost:8080 pi@<pi-ip>
-        creds = flow.run_local_server(host="localhost", port=8080, open_browser=False, prompt="consent")
+        # On a headless Pi, SSH with: ssh -L 8090:localhost:8090 aquacam@<pi-ip>
+        # 8090 avoids conflict with AquaCam's web UI on 8080.
+        oauth_port = int(os.environ.get("YT_OAUTH_PORT", "8090"))
+        creds = flow.run_local_server(host="localhost", port=oauth_port, open_browser=False, prompt="consent")
     token_file.parent.mkdir(parents=True, exist_ok=True)
     token_file.write_text(creds.to_json())
     return creds
@@ -306,6 +320,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="aquacam-stream.conf")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--auth-check", action="store_true", help="Only verify YouTube OAuth/API access; do not create or update broadcasts")
     args = parser.parse_args()
 
     config_file = pathlib.Path(args.config).expanduser().resolve()
@@ -325,6 +340,15 @@ def main() -> int:
 
     creds = get_credentials(client_secrets, token_file)
     youtube = youtube_service(creds)
+
+    if args.auth_check:
+        resp = call(youtube.channels().list(part="id,snippet", mine=True))
+        items = resp.get("items", [])
+        channel = items[0] if items else {}
+        title_text = channel.get("snippet", {}).get("title", "unknown channel")
+        print(f"YouTube API auth OK: {title_text} ({channel.get('id', 'unknown id')})")
+        print(f"Token file: {token_file}")
+        return 0
 
     stream = None
     sid = read_id(stream_id_file)
