@@ -18,7 +18,8 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 - Clean end-of-day ffmpeg stop
 - Optional Pi shutdown after the stream window
 - Maintenance-safe outside-hours boot: manual boots outside the active window stay on instead of immediately shutting down
-- Lightweight web settings manager with first-run login setup
+- Lightweight LAN web dashboard/settings manager with first-run login setup
+- Web UI status cards for stream service, ffmpeg, YouTube token, logs/progress, OAuth re-authorisation, and safe YouTube API auth checks
 - Local stuck-stream detection using ffmpeg progress output
 - YouTube Data API v3 broadcast preparation
 - Reuses saved YouTube liveStream where possible
@@ -128,10 +129,12 @@ https://www.googleapis.com/auth/youtube
 
 ## First-time OAuth authorization
 
-On a headless Pi, create a tunnel from your computer:
+Recommended path: install/open the web manager, then use **Re-authorise YouTube** from the AquaCam dashboard. It uses the existing web UI callback on port `8080`, writes `token.json`, and runs a safe auth check.
+
+Manual fallback on a headless Pi uses a separate OAuth callback port so it does not conflict with the web UI. Create a tunnel from your computer:
 
 ```bash
-ssh -L 8080:localhost:8080 <PI_USER>@aquacam.local
+ssh -L 8090:localhost:8090 <PI_USER>@aquacam.local
 ```
 
 In another SSH session:
@@ -142,6 +145,15 @@ cd /home/<PI_USER>/aquacam-stream-ytapi
 ```
 
 Open the printed Google authorization URL on your computer, approve the YouTube channel, and let it redirect to localhost through the tunnel. This creates `token.json`. After that, the service can run unattended.
+
+For a non-mutating auth-only check:
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf --auth-check
+```
+
+Google access tokens normally expire after about one hour. That is expected. The important part is that `token.json` contains a refresh token. If the Google OAuth app is in production, the refresh token should normally be long-lived unless revoked by Google/account security changes.
 
 ## Service install
 
@@ -156,9 +168,9 @@ sudo systemctl status aquacam-ytapi.service --no-pager
 
 ## Optional web settings manager
 
-The `webmgr/` folder provides a tiny LAN-only web UI for editing common safe
-settings in `aquacam-stream.conf`. It uses only Python's standard library.
-First visit asks you to create the admin login.
+The `webmgr/` folder provides a tiny LAN-only web UI for the AquaCam dashboard,
+safe config edits, logs/progress, YouTube token status, YouTube auth check, and
+YouTube re-authorisation. First visit asks you to create the admin login.
 
 ```bash
 cd /home/<PI_USER>/aquacam-stream-ytapi

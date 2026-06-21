@@ -79,10 +79,13 @@ YT_THUMBNAIL_FILE="/home/<PI_USER>/aquacam-stream-ytapi/the-calm-aquarium-thumbn
 
 ## Authorize YouTube once
 
-From your computer:
+Recommended: open the web manager on your LAN and use **Re-authorise YouTube**
+from the dashboard. It writes `token.json` and runs a safe auth check.
+
+Manual fallback from your computer:
 
 ```bash
-ssh -L 8080:localhost:8080 <PI_USER>@aquacam.local
+ssh -L 8090:localhost:8090 <PI_USER>@aquacam.local
 ```
 
 On the Pi:
@@ -91,6 +94,13 @@ On the Pi:
 cd /home/<PI_USER>/aquacam-stream-ytapi
 .venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf
 chmod 600 token.json stream.key
+```
+
+Auth-only verification without creating/updating broadcasts:
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf --auth-check
 ```
 
 ## Install service

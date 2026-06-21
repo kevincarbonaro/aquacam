@@ -32,19 +32,34 @@ Wrote stream key
 YouTube API prepare complete
 ```
 
+For a safe auth-only check that does not create/update broadcasts:
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+python3 ytapi_prepare_broadcast.py --config ./aquacam-stream.conf --auth-check
+```
+
 ## OAuth problems
 
 If you see missing/invalid token errors:
 
 1. Confirm `client_secret.json` exists.
-2. Re-run first-time OAuth using the localhost tunnel.
+2. Prefer the web manager dashboard button: **Re-authorise YouTube**.
 3. Confirm `token.json` was created.
 4. Confirm the authorized Google account has access to the YouTube channel.
 
-Tunnel command from your computer:
+If the log says `invalid_grant`, Google rejected the saved refresh token. The
+prepare script moves the bad token to a timestamped `.revoked.*` backup and you
+must re-authorise once. If this repeats every few days, confirm the Google OAuth
+app is **In production**, not **Testing**.
+
+Google access tokens expiring hourly is normal. A refresh token in `token.json`
+is what lets AquaCam refresh automatically.
+
+Manual fallback tunnel command from your computer:
 
 ```bash
-ssh -L 8080:localhost:8080 <PI_USER>@aquacam.local
+ssh -L 8090:localhost:8090 <PI_USER>@aquacam.local
 ```
 
 Then on the Pi:

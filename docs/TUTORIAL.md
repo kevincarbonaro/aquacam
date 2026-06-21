@@ -172,10 +172,15 @@ YT_LATENCY_PREFERENCE="low"
 
 ## 7. First-time OAuth authorization
 
-If the Pi is headless, open a tunnel from your computer:
+Recommended: install/open the web manager and use **Re-authorise YouTube** from
+the AquaCam dashboard. It uses the existing web UI callback on port `8080`,
+writes `token.json`, and runs a safe auth check.
+
+Manual fallback for a headless Pi uses port `8090` to avoid conflicting with the
+web UI on `8080`. Open a tunnel from your computer:
 
 ```bash
-ssh -L 8080:localhost:8080 <PI_USER>@aquacam.local
+ssh -L 8090:localhost:8090 <PI_USER>@aquacam.local
 ```
 
 In another SSH session:
@@ -186,6 +191,18 @@ cd /home/<PI_USER>/aquacam-stream-ytapi
 ```
 
 The script prints a Google authorization URL. Open it on your computer, approve the correct YouTube channel, and let Google redirect to localhost. The SSH tunnel sends that callback to the Pi.
+
+For a non-mutating auth-only check:
+
+```bash
+cd /home/<PI_USER>/aquacam-stream-ytapi
+.venv/bin/python ytapi_prepare_broadcast.py --config ./aquacam-stream.conf --auth-check
+```
+
+Google access tokens normally expire after about one hour. That is expected. The
+important part is that `token.json` contains a refresh token. If the Google OAuth
+app is in production, the refresh token should normally be long-lived unless
+revoked by Google/account security changes.
 
 After success, the Pi has:
 

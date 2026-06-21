@@ -10,10 +10,22 @@ Recommended location: keep it as a sub-folder of the AquaCam project (`webmgr/`)
 - First visit asks you to create the admin username and password.
 - Stores the password as PBKDF2-SHA256 in `.aquacam-webmgr.json` beside the config, mode `600`.
 - Uses a local session cookie after login.
+- Shows dashboard status for the stream service, ffmpeg, YouTube token, and token refresh capability.
+- Provides a safe YouTube API auth check that does not create/update broadcasts.
+- Provides a YouTube re-authorisation flow using the existing web UI callback on port `8080`.
+- Shows latest stream log and ffmpeg progress output.
 - Edits a safe allow-list of common settings only.
 - Creates a timestamped backup before every config save.
 - `Save and restart service` tries `sudo -n systemctl restart aquacam-ytapi.service` first.
 - If passwordless sudo is unavailable, it falls back to signalling the same-user `start_stream.sh` process; with the normal `Restart=always` systemd unit, systemd restarts it.
+
+## OAuth/token notes
+
+Google access tokens normally expire after about one hour; this is expected. The
+important dashboard field is whether a refresh token is present. If the Google
+OAuth app is in production and `refresh token: yes`, AquaCam should refresh the
+access token automatically. If Google revokes the refresh token, use
+**Re-authorise YouTube** from the dashboard.
 
 ## Install on the Pi with systemd
 
