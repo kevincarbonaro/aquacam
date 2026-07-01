@@ -23,12 +23,20 @@ YT_API_PREPARE_SCRIPT="${YT_API_PREPARE_SCRIPT:-${SCRIPT_DIR}/ytapi_prepare_broa
 YT_API_PREPARE_RETRIES="${YT_API_PREPARE_RETRIES:-3}"
 YT_API_PREPARE_RETRY_DELAY="${YT_API_PREPARE_RETRY_DELAY:-20}"
 YT_API_END_SCRIPT="${YT_API_END_SCRIPT:-${SCRIPT_DIR}/ytapi_end_broadcast.py}"
+EMAIL_CONFIG_FILE="${EMAIL_CONFIG_FILE:-${SCRIPT_DIR}/aquacam-email.conf}"
+NOTIFY_SCRIPT="${NOTIFY_SCRIPT:-${SCRIPT_DIR}/scripts/aquacam_notify.py}"
 
 : "${STREAM_KEY_FILE:?missing STREAM_KEY_FILE}"
 : "${LOG_FILE:?missing LOG_FILE}"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+notify_event() {
+  local event="$1" message="$2"
+  [[ -x "$NOTIFY_SCRIPT" || -f "$NOTIFY_SCRIPT" ]] || return 0
+  timeout 45 "$PYTHON_BIN" "$NOTIFY_SCRIPT" "$event" --email-config "$EMAIL_CONFIG_FILE" --message "$message" >> "$LOG_FILE" 2>&1 || true
 }
 
 prepare_youtube_api() {
@@ -137,6 +145,7 @@ maybe_shutdown_after_stop() {
   fi
 
   sleep "$wait_s"
+  notify_event "pi_shutting_down" "AquaCam is requesting Pi shutdown now."
   sudo /sbin/shutdown -h now
 }
 
@@ -172,12 +181,14 @@ stop_ffmpeg() {
   if [[ -n "$ffmpeg_pid" ]] && kill -0 "$ffmpeg_pid" 2>/dev/null; then
     kill "$ffmpeg_pid" 2>/dev/null || true
     wait "$ffmpeg_pid" 2>/dev/null || true
+    notify_event "stream_stopped" "AquaCam FFmpeg livestream process stopped."
   fi
 }
 
 cleanup() {
   log "Signal received. Stopping stream cleanly."
   stop_ffmpeg
+  end_youtube_api
   exit 0
 }
 trap cleanup SIGINT SIGTERM
@@ -204,6 +215,7 @@ launch_ffmpeg() {
     -progress "$PROGRESS_FILE" \
     "${STREAM_URL}/${STREAM_KEY}" >> "$LOG_FILE" 2>&1 &
   ffmpeg_pid=$!
+  notify_event "stream_started" "AquaCam FFmpeg livestream process started with PID ${ffmpeg_pid}."
 }
 
 log "Starting AquaCam stream supervisor"

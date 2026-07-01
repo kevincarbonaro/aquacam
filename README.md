@@ -19,7 +19,8 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 - Optional Pi shutdown after the stream window
 - Maintenance-safe outside-hours boot: manual boots outside the active window stay on instead of immediately shutting down
 - Lightweight LAN web dashboard/settings manager with first-run login setup
-- Web UI status cards for stream service, ffmpeg, YouTube token, logs/progress, OAuth re-authorisation, and safe YouTube API auth checks
+- Web UI status cards for stream service, ffmpeg, YouTube token, logs/progress, device-flow YouTube re-authorisation, and email alert settings
+- Optional SMTP email notifications for token checks, stream start/stop, Pi alive, and Pi shutdown events
 - Local stuck-stream detection using ffmpeg progress output
 - YouTube Data API v3 broadcast preparation
 - Reuses saved YouTube liveStream where possible
@@ -56,7 +57,10 @@ This API version fixes that workflow by preparing YouTube Live from the Pi befor
 - `docs/TROUBLESHOOTING.md` - diagnostics and fixes
 - `scripts/start_stream.sh` - stream supervisor
 - `scripts/ytapi_prepare_broadcast.py` - YouTube API prepare step
+- `scripts/aquacam_token_monitor.py` - boot/daily YouTube token check and notification trigger
+- `scripts/aquacam_notify.py` - SMTP notification helper
 - `configs/aquacam-stream.conf.example` - config template
+- `configs/aquacam-email.conf.example` - optional SMTP notification template
 - `systemd/aquacam-ytapi.service` - systemd unit template
 - `systemd/aquacam-webmgr.service` - optional web manager systemd unit template
 - `webmgr/` - lightweight LAN web UI for editing safe config settings
@@ -120,7 +124,7 @@ Full setup is in `docs/TUTORIAL.md`.
 - Google Cloud project
 - YouTube Data API v3 enabled
 - OAuth consent screen configured
-- OAuth Desktop App credentials downloaded as `client_secret.json`
+- OAuth Client ID downloaded as `client_secret.json`. For the self-contained web UI re-authorisation flow, use Google OAuth application type **TVs and Limited Input devices**.
 - OAuth scope used by this project:
 
 ```text
@@ -129,7 +133,9 @@ https://www.googleapis.com/auth/youtube
 
 ## First-time OAuth authorization
 
-Recommended path: install/open the web manager, then use **Re-authorise YouTube** from the AquaCam dashboard. It uses the existing web UI callback on port `8080`, writes `token.json`, and runs a safe auth check.
+Recommended path: install/open the web manager, then use **Re-authorise YouTube** from the AquaCam dashboard. The web manager uses Google's device sign-in flow, so it works from the Pi's LAN web UI without SSH tunnels or private-IP OAuth callbacks. It shows a Google device code, polls for approval, then writes `token.json` locally.
+
+For this flow, create a Google OAuth Client ID with application type **TVs and Limited Input devices**, download it as `client_secret.json`, and place it at the configured `YT_CLIENT_SECRETS` path.
 
 Manual fallback on a headless Pi uses a separate OAuth callback port so it does not conflict with the web UI. Create a tunnel from your computer:
 
@@ -154,6 +160,35 @@ cd /home/<PI_USER>/aquacam-stream-ytapi
 ```
 
 Google access tokens normally expire after about one hour. That is expected. The important part is that `token.json` contains a refresh token. If the Google OAuth app is in production, the refresh token should normally be long-lived unless revoked by Google/account security changes.
+
+## Optional email notifications
+
+AquaCam can send SMTP email alerts using `scripts/aquacam_notify.py` and the
+boot/daily token monitor `scripts/aquacam_token_monitor.py`. The web manager has
+an **Email alerts** section for SMTP settings and notification checkboxes.
+
+Supported notification toggles:
+
+- token status daily/boot check passed
+- token expired / YouTube auth failed
+- live stream started
+- live stream stopped
+- Pi is alive after boot
+- Pi is shutting down
+
+For Gmail SMTP, use a dedicated alerts Gmail account if possible, enable 2-Step
+Verification, and create a Google App Password. Do not use or store your normal
+Google password.
+
+Create the config manually if not using the web UI:
+
+```bash
+cp configs/aquacam-email.conf.example aquacam-email.conf
+chmod 600 aquacam-email.conf
+```
+
+Never commit `aquacam-email.conf`; it may contain SMTP usernames, recipients,
+and app passwords.
 
 ## Service install
 
@@ -195,6 +230,7 @@ Never commit:
 - `client_secret.json`
 - `token.json`
 - `stream.key`
+- `aquacam-email.conf`
 - `broadcast.id`
 - `stream.id`
 - logs or personal network details

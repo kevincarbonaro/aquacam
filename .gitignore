@@ -2,6 +2,7 @@
 stream.key
 token.json
 client_secret*.json
+aquacam-email.conf
 broadcast.id
 stream.id
 thumbnail_set.id
@@ -22,4 +23,5 @@ scratch/
 backups/
 *.raw.backup
 *.bak
+*.bak.*
 *.tar.gz

@@ -1,0 +1,21 @@
+# AquaCam SMTP email alert settings
+# Copy to /home/<PI_USER>/aquacam-stream-ytapi/aquacam-email.conf and chmod 600.
+# For Gmail, enable 2-Step Verification and use an App Password, not your normal password.
+
+SMTP_ENABLED="false"
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_STARTTLS="true"
+SMTP_SSL="false"
+SMTP_USER=""
+SMTP_PASSWORD=""
+MAIL_FROM=""
+MAIL_TO=""
+
+# Notification toggles
+NOTIFY_TOKEN_STATUS="false"        # OK status after boot/daily token check
+NOTIFY_TOKEN_EXPIRED="true"        # Alert when YouTube token/auth check fails
+NOTIFY_STREAM_STARTED="false"      # Email when FFmpeg starts streaming
+NOTIFY_STREAM_STOPPED="false"      # Email when FFmpeg stops
+NOTIFY_PI_ALIVE="false"            # Email after boot monitor runs
+NOTIFY_PI_SHUTTING_DOWN="true"     # Email before AquaCam requests shutdown

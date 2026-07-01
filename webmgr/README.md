@@ -11,8 +11,8 @@ Recommended location: keep it as a sub-folder of the AquaCam project (`webmgr/`)
 - Stores the password as PBKDF2-SHA256 in `.aquacam-webmgr.json` beside the config, mode `600`.
 - Uses a local session cookie after login.
 - Shows dashboard status for the stream service, ffmpeg, YouTube token, and token refresh capability.
-- Provides a safe YouTube API auth check that does not create/update broadcasts.
-- Provides a YouTube re-authorisation flow using the existing web UI callback on port `8080`.
+- Provides a YouTube re-authorisation flow using Google's device sign-in flow, avoiding SSH tunnels and private-IP OAuth callbacks.
+- Provides SMTP email alert settings and notification checkboxes.
 - Shows latest stream log and ffmpeg progress output.
 - Edits a safe allow-list of common settings only.
 - Creates a timestamped backup before every config save.
@@ -24,8 +24,25 @@ Recommended location: keep it as a sub-folder of the AquaCam project (`webmgr/`)
 Google access tokens normally expire after about one hour; this is expected. The
 important dashboard field is whether a refresh token is present. If the Google
 OAuth app is in production and `refresh token: yes`, AquaCam should refresh the
-access token automatically. If Google revokes the refresh token, use
-**Re-authorise YouTube** from the dashboard.
+access token automatically. If Google revokes the refresh token, use **Re-authorise YouTube** from the dashboard. For the self-contained device sign-in flow, use a Google OAuth Client ID of type **TVs and Limited Input devices**.
+
+## Email alerts
+
+The dashboard can save `aquacam-email.conf` beside the stream config. This file
+is mode `600` and must not be committed to git because it may contain SMTP app
+passwords and recipient addresses.
+
+Supported notification checkboxes:
+
+- token status daily/boot check passed
+- token expired / YouTube auth failed
+- live stream started
+- live stream stopped
+- Pi is alive after boot
+- Pi is shutting down
+
+For Gmail, use an App Password with 2-Step Verification enabled. Do not store a
+normal Google account password on the Pi.
 
 ## Install on the Pi with systemd
 
